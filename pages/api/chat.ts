@@ -1,26 +1,38 @@
 import { NextApiRequest, NextApiResponse } from 'next';
-
-const MOCK_RESPONSES = [
-  "For W-2 forms, you'll need to report all income from your employer.",
-  "Tax brackets determine the percentage of tax you pay based on your income level.",
-  "Standard deductions reduce your taxable income. For 2023, it's $13,850 for single filers.",
-  "To maximize deductions, consider itemizing if your deductions exceed the standard deduction."
-];
+import { getMockTaxResponse, handleFileUpload } from '../../utils/mock-responses';
 
 export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse
 ) {
   if (req.method === 'POST') {
-    // Simulate a random AI response
-    const mockResponse = 
-      MOCK_RESPONSES[Math.floor(Math.random() * MOCK_RESPONSES.length)];
+    try {
+      const { messages } = req.body;
+      const lastMessage = messages[messages.length - 1];
 
-    return res.status(200).json({
-      id: Date.now().toString(),
-      content: mockResponse,
-      role: 'assistant'
-    });
+      let response;
+      // Check if it's a file upload simulation
+      if (lastMessage.content.includes('upload')) {
+        response = await handleFileUpload(lastMessage);
+      } else {
+        // Generate a mock tax-related response
+        const responseText = getMockTaxResponse(messages);
+        
+        response = {
+          id: Date.now().toString(),
+          content: responseText,
+          role: 'assistant'
+        };
+      }
+
+      return res.status(200).json(response);
+    } catch (error) {
+      console.error('API Error:', error);
+      return res.status(500).json({ 
+        error: 'Failed to process request',
+        details: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
   }
 
   res.setHeader('Allow', ['POST']);
