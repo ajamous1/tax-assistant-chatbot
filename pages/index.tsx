@@ -131,6 +131,13 @@ export default function TaxAssistantChat() {
     <div className="min-h-screen bg-blue-50 flex flex-col">
       <div className="container mx-auto max-w-4xl px-4 py-8 flex-grow">
         <div className="bg-white shadow-md rounded-xl overflow-hidden flex flex-col h-[90vh]">
+          {/* Personalized Header */}
+          <div className="p-4 bg-blue-100 border-b">
+            <h2 className="text-2xl font-bold text-blue-800">
+              Hi, {userName}, how can I help you today?
+            </h2>
+          </div>
+
           {/* Chat Messages Area */}
           <div className="flex-grow overflow-y-auto p-4 space-y-4">
             {messages.map((message) => (
@@ -159,12 +166,12 @@ export default function TaxAssistantChat() {
               </div>
             ))}
 
-            {/* AI Thinking Indicator */}
+            {/* AI Thinking Indicator with 1.5s Animation */}
             {isLoading && (
               <div className="flex justify-start">
-                <div className="bg-blue-200 p-3 rounded-lg flex items-center">
+                <div className="bg-blue-200 p-3 rounded-lg flex items-center animate-pulse">
                   <Loader2 className="animate-spin mr-2" />
-                
+                  Thinking...
                 </div>
               </div>
             )}
@@ -251,7 +258,7 @@ export default function TaxAssistantChat() {
           )}
 
           {/* Conditional Dashboard Rendering */}
-          {messages.some(m => m.content.toLowerCase().includes('analysis')) && (
+          {(messages.some(m => m.content.toLowerCase().includes('analysis')) || selectedFile) && (
             <div className="mt-4">
               <TaxInsightsDashboard />
             </div>
