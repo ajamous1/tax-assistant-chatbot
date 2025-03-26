@@ -1,22 +1,26 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useChat } from '@ai-sdk/react';
+import { Message } from 'ai';
 import { DollarSign, FileUp, Send, Loader2 } from 'lucide-react';
 import { TaxInsightsDashboard } from '../components/tax-insights-dashboard';
 import { FilePreview } from './file-preview';
+import { getMockTaxResponse, handleFileUpload } from '../utils/mock-responses';
 
 export default function TaxAssistantChat() {
   const [userName, setUserName] = useState('');
   const [isNameEntered, setIsNameEntered] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isDragging, setIsDragging] = useState(false);
+  const [suggestedQuestions, setSuggestedQuestions] = useState<string[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [showDashboard, setShowDashboard] = useState(false);
 
   const { 
     messages, 
     input, 
     handleInputChange, 
-    handleSubmit, 
-    isLoading 
+    setMessages,
+    handleSubmit: originalHandleSubmit 
   } = useChat({
     api: '/api/chat',
     initialMessages: []
@@ -75,30 +79,87 @@ export default function TaxAssistantChat() {
     };
   }, []);
 
-  // Custom submit handler to include file and username context
-  const customHandleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
-    handleSubmit(e);
-    
-    // Reset file after submission if needed
-    if (selectedFile) {
-      setSelectedFile(null);
-    }
-  };
-
   // Suggested questions generator
-  const generateSuggestedQuestions = () => {
-    const lastMessage = messages[messages.length - 1];
-    if (lastMessage && lastMessage.role === 'assistant') {
-      return [
-        'What are tax credits?',
-        'Explain capital gains tax',
-        'How can I reduce my tax liability?'
-      ];
-    }
-    return [];
+  useEffect(() => {
+    const questions = [
+      'How do tax brackets work?',
+      'Tell me about deductions',
+      'How can I reduce my tax liability?',
+      'What are tax credits?'
+    ];
+    setSuggestedQuestions(questions);
+  }, []);
+
+  // Custom submit handler to include file and username context
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    
+    // Allow submission with input text OR selected file
+    const shouldSubmit = input.trim() || selectedFile;
+    if (!shouldSubmit) return;
+
+    // Add user message if input exists
+    const userMessage: Message | null = input.trim() 
+      ? {
+          id: Date.now().toString(),
+          content: input,
+          role: 'user' as const
+        }
+      : null;
+
+    // Add file message if file is present
+    const fileMessage: Message | null = selectedFile
+      ? {
+          id: Date.now().toString(),
+          content: `File uploaded: ${selectedFile.name}`,
+          role: 'data' as const
+        }
+      : null;
+
+    // Simulate AI response
+    const aiResponse: Message = {
+      id: Date.now().toString(),
+      content: getMockTaxResponse([
+        ...(userMessage ? [userMessage] : []),
+        ...(fileMessage ? [fileMessage] : [])
+      ]),
+      role: 'assistant' as const
+    };
+
+    // Update messages
+    setMessages((prevMessages) => [
+      ...prevMessages, 
+      ...(userMessage ? [userMessage] : []),
+      ...(fileMessage ? [fileMessage] : []),
+      aiResponse
+    ]);
+
+    // Reset input and file
+    handleInputChange({ 
+      target: { value: '' } 
+    } as React.ChangeEvent<HTMLInputElement>);
+    setSelectedFile(null);
+
+    // Show dashboard more contextually
+    setShowDashboard(true);
   };
 
-  // Render name entry if not entered
+  // Handler for suggested questions
+  const handleSuggestedQuestion = (question: string) => {
+    // Directly submit the suggested question
+    const syntheticEvent = {
+      preventDefault: () => {},
+      target: { value: question }
+    } as unknown as React.FormEvent<HTMLFormElement>;
+
+    // Set input and immediately submit
+    handleInputChange({ 
+      target: { value: question } 
+    } as React.ChangeEvent<HTMLInputElement>);
+
+    handleSubmit(syntheticEvent);
+  };
+
   if (!isNameEntered) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-blue-50">
@@ -132,8 +193,8 @@ export default function TaxAssistantChat() {
       <div className="container mx-auto max-w-4xl px-4 py-8 flex-grow">
         <div className="bg-white shadow-md rounded-xl overflow-hidden flex flex-col h-[90vh]">
           {/* Personalized Header */}
-          <div className="p-4 bg-blue-100 border-b">
-            <h2 className="text-2xl font-bold text-blue-800">
+          <div className="px-6 py-8 bg-blue-50">
+            <h2 className="text-3xl font-bold text-blue-800">
               Hi, {userName}, how can I help you today?
             </h2>
           </div>
@@ -165,16 +226,6 @@ export default function TaxAssistantChat() {
                 </div>
               </div>
             ))}
-
-            {/* AI Thinking Indicator with 1.5s Animation */}
-            {isLoading && (
-              <div className="flex justify-start">
-                <div className="bg-blue-200 p-3 rounded-lg flex items-center animate-pulse">
-                  <Loader2 className="animate-spin mr-2" />
-                  Thinking...
-                </div>
-              </div>
-            )}
           </div>
 
           {/* File Upload and Preview */}
@@ -219,7 +270,7 @@ export default function TaxAssistantChat() {
 
           {/* Chat Input */}
           <form 
-            onSubmit={customHandleSubmit} 
+            onSubmit={handleSubmit} 
             className="p-4 bg-blue-50 border-t flex items-center space-x-2"
           >
             <input
@@ -230,35 +281,28 @@ export default function TaxAssistantChat() {
             />
             <button 
               type="submit" 
-              disabled={!input.trim()}
+              disabled={!input.trim() && !selectedFile}
               className="bg-blue-500 text-white p-2 rounded-lg hover:bg-blue-600 disabled:opacity-50"
             >
               <Send size={20} />
             </button>
           </form>
 
-          {/* Suggested Questions */}
-          {generateSuggestedQuestions().length > 0 && (
-            <div className="p-4 bg-blue-50 border-t flex space-x-2 overflow-x-auto">
-              {generateSuggestedQuestions().map((question) => (
-                <button
-                  key={question}
-                  onClick={() => {
-                    handleSubmit({
-                      preventDefault: () => {},
-                      currentTarget: { value: question }
-                    } as any);
-                  }}
-                  className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm hover:bg-blue-200"
-                >
-                  {question}
-                </button>
-              ))}
-            </div>
-          )}
+          {/* Suggested Questions Section */}
+          <div className="p-4 bg-blue-50 border-t flex space-x-2 overflow-x-auto">
+            {suggestedQuestions.map((question) => (
+              <button
+                key={question}
+                onClick={() => handleSuggestedQuestion(question)}
+                className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm hover:bg-blue-200"
+              >
+                {question}
+              </button>
+            ))}
+          </div>
 
           {/* Conditional Dashboard Rendering */}
-          {(messages.some(m => m.content.toLowerCase().includes('analysis')) || selectedFile) && (
+          {showDashboard && (
             <div className="mt-4">
               <TaxInsightsDashboard />
             </div>
