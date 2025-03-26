@@ -2,7 +2,8 @@
 @tailwind components;
 @tailwind utilities;
 
+/* If you need custom styles, use Tailwind classes or standard CSS */
 body {
-  background-color: #f0f5ff;
+  background-color: #f3f4f6;
   color: #1f2937;
 }

@@ -1,120 +1,132 @@
 import React, { useState } from 'react';
-import { useChat } from '@ai-sdk/react';
-import { motion, AnimatePresence } from 'motion/react';
+import { useChat } from '@ai-sdk/react'
+import { Send, Paperclip } from 'lucide-react';
 import { TaxInsightsChart } from '../components/tax-insights-chart';
-import { FileUpload } from '../components/ui/file-upload';
-import { ChatMessage } from '../components/ui/chat-message';
-import TaxIntelligenceEngine from '../utils/tax-helpers';
 
 export default function TaxAssistantChat() {
   const { messages, input, handleInputChange, handleSubmit } = useChat({
-    // Enhanced API route configuration
-    api: '/api/chat',
-    onResponse: async (response) => {
-      // Correct method to generate tax insight
-      try {
-        const insight = await TaxIntelligenceEngine.generateTaxInsight(response.toString());
-        // Potential additional processing of the insight
-        console.log(insight);
-      } catch (error) {
-        console.error('Failed to generate tax insight:', error);
-      }
-    }
+    api: '/api/chat'
   });
 
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
-  // Enhanced suggested questions with more context
   const suggestedQuestions = [
-    { 
-      text: 'Understanding W-2 Forms', 
-      complexity: 'beginner',
-      icon: '📄'
-    },
-    { 
-      text: 'Tax Bracket Explanation', 
-      complexity: 'intermediate',
-      icon: '💡'
-    },
-    { 
-      text: 'Maximizing Deductions', 
-      complexity: 'advanced',
-      icon: '💰'
-    }
+    'How do tax brackets work?', 
+    'What are standard deductions?', 
+    'How can I maximize my tax savings?'
   ];
 
+  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    setSelectedFile(file || null);
+  };
+
   return (
-    <motion.div 
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={{ duration: 0.5 }}
-      className="max-w-4xl mx-auto p-6 bg-gradient-to-br from-blue-50 to-white min-h-screen"
-    >
-      <div className="bg-white shadow-2xl rounded-2xl p-8">
-        <h1 className="text-3xl font-bold mb-6 text-center text-blue-900">
-          Intelligent Tax Assistant
-        </h1>
-        
-        <AnimatePresence>
-          {messages.map((m) => (
-            <motion.div
-              key={m.id}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
+    <div className="flex flex-col h-screen bg-gray-100">
+      <div className="flex-grow overflow-y-auto p-4 space-y-4">
+        {messages.map((m) => (
+          <div 
+            key={m.id} 
+            className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}
+          >
+            <div 
+              className={`
+                max-w-[80%] 
+                px-4 py-2 
+                rounded-2xl 
+                ${m.role === 'user' 
+                  ? 'bg-blue-500 text-white' 
+                  : 'bg-white text-gray-800 border'}
+              `}
             >
-              <ChatMessage message={m} />
-            </motion.div>
-          ))}
-        </AnimatePresence>
+              {m.content}
+            </div>
+          </div>
+        ))}
+      </div>
 
-        <FileUpload onFileSelect={setSelectedFile} />
+      <div className="p-4 bg-white border-t">
+        {selectedFile && (
+          <div className="mb-2 text-sm text-gray-600 flex items-center">
+            <Paperclip className="mr-2 h-4 w-4" />
+            {selectedFile.name}
+          </div>
+        )}
 
-        <form onSubmit={handleSubmit} className="mt-6">
-          <div className="flex space-x-2">
-            <input
+        <div className="flex items-center space-x-2">
+          <label className="cursor-pointer">
+            <input 
+              type="file" 
+              className="hidden" 
+              onChange={handleFileUpload}
+              accept=".pdf,.jpg,.jpeg,.png"
+            />
+            <Paperclip className="text-gray-500 hover:text-gray-700" />
+          </label>
+
+          <form onSubmit={handleSubmit} className="flex-grow flex">
+            <input 
               value={input}
               onChange={handleInputChange}
-              placeholder="Ask a detailed tax question..."
-              className="flex-grow p-3 border-2 border-blue-200 rounded-lg focus:ring-2 focus:ring-blue-500 transition-all"
+              placeholder="Send a message"
+              className="
+                flex-grow 
+                px-3 
+                py-2 
+                rounded-l-xl 
+                border 
+                focus:outline-none 
+                focus:ring-2 
+                focus:ring-blue-500
+              "
             />
             <button 
               type="submit" 
-              className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors"
+              className="
+                bg-blue-500 
+                text-white 
+                px-4 
+                py-2 
+                rounded-r-xl 
+                hover:bg-blue-600
+              "
             >
-              Send
+              <Send className="h-5 w-5" />
             </button>
-          </div>
-        </form>
-
-        <div className="mt-6">
-          <h3 className="text-xl font-semibold mb-4">Suggested Explorations:</h3>
-          <div className="flex flex-wrap gap-3">
-            {suggestedQuestions.map((q) => (
-              <button 
-                key={q.text} 
-                onClick={() => handleSubmit({ 
-                  preventDefault: () => {}, 
-                  currentTarget: { value: q.text } 
-                } as any)}
-                className={`
-                  px-4 py-2 rounded-full 
-                  ${q.complexity === 'beginner' ? 'bg-green-100 text-green-800' : 
-                    q.complexity === 'intermediate' ? 'bg-yellow-100 text-yellow-800' : 
-                    'bg-red-100 text-red-800'}
-                  flex items-center space-x-2
-                  hover:scale-105 transition-transform
-                `}
-              >
-                <span>{q.icon}</span>
-                <span>{q.text}</span>
-              </button>
-            ))}
-          </div>
+          </form>
         </div>
 
-        <TaxInsightsChart />
+        <div className="mt-2 flex space-x-2 overflow-x-auto pb-2">
+          {suggestedQuestions.map((question) => (
+            <button
+              key={question}
+              onClick={() => {
+                handleSubmit({
+                  preventDefault: () => {},
+                  currentTarget: { value: question }
+                } as any);
+              }}
+              className="
+                px-3 
+                py-1 
+                bg-gray-100 
+                text-gray-700 
+                rounded-full 
+                text-sm 
+                hover:bg-gray-200
+              "
+            >
+              {question}
+            </button>
+          ))}
+        </div>
       </div>
-    </motion.div>
+
+      {messages.length > 0 && (
+        <div className="p-4">
+          <TaxInsightsChart />
+        </div>
+      )}
+    </div>
   );
 }

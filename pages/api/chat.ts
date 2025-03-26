@@ -1,22 +1,21 @@
 import { NextApiRequest, NextApiResponse } from 'next';
-import { getMockTaxResponse, handleFileUpload } from '../../utils/mock-responses';
+
+const MOCK_RESPONSES = [
+  "For W-2 forms, you'll need to report all income from your employer.",
+  "Tax brackets determine the percentage of tax you pay based on your income level.",
+  "Standard deductions reduce your taxable income. For 2023, it's $13,850 for single filers.",
+  "To maximize deductions, consider itemizing if your deductions exceed the standard deduction."
+];
 
 export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse
 ) {
   if (req.method === 'POST') {
-    const { messages, data } = req.body;
-    
-    // Simulate file upload handling
-    if (data?.file) {
-      const fileResponse = await handleFileUpload(data.file);
-      return res.status(200).json(fileResponse);
-    }
+    // Simulate a random AI response
+    const mockResponse = 
+      MOCK_RESPONSES[Math.floor(Math.random() * MOCK_RESPONSES.length)];
 
-    // Simulate AI response generation
-    const mockResponse = getMockTaxResponse(messages);
-    
     return res.status(200).json({
       id: Date.now().toString(),
       content: mockResponse,
@@ -24,7 +23,6 @@ export default async function handler(
     });
   }
 
-  // Handle other HTTP methods
   res.setHeader('Allow', ['POST']);
   res.status(405).end(`Method ${req.method} Not Allowed`);
 }
